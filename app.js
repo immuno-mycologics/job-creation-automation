@@ -211,6 +211,7 @@ function testingOn(){
     fetch('https://164.90.42.150:1434/SLReports/Report/OutputFiles/sreenath-umagandhi@immy.com/CCGJobOperationListing_DIMMY_264946.pdf')
         .then(res => res.buffer())
         .then(buffer => {
+            console.log("success")
             console.log(buffer)
         }).catch(function (err){
             console.log(err);
