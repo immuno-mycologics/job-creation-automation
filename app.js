@@ -13,6 +13,7 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 let fetch = require('node-fetch');
 const buffer = require("buffer");
+var CircularJSON = require('circular-json');
 
 const conn =
     {
@@ -74,18 +75,34 @@ app.post('/api/uploadReport', async (req, res) => {
                         'X-RequestDigest': '0x703AE026F5E314B4F898AE91F77BDA1D192553AD50585C5018FCE8BD69BA6DC71EA26D88A4E650235663C76804D9048B2E7D1FB786702F2B4D97FCCC33B90ED9'
                     }
                 };
-                let modPath = req.body.OutputPath.replace("https://inforapp.immy.com","http://164.90.42.150:1435")
+                let modPath = req.body.OutputPath.replace("https://inforapp.immy.com","http://164.90.42.150:1435");
+                let modPath1 = req.body.OutputPath1.replace("https://inforapp.immy.com","http://164.90.42.150:1435");
 
                 console.log(modPath)
+                console.log(modPath1)
                 fetch(modPath)
                     .then(res => res.buffer())
                     .then(buffer => {
                         let reportFileName = "JobOperationListingReport.pdf"
-                        axios.post('https://immy2700.sharepoint.com/sites/production-automation/_api/web/GetFolderByServerRelativeURL' +
-                            '(\'/sites/production-automation/Shared Documents/Production Data/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName + '\',overwrite=true)'
+                        axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
+                            '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName + '\',overwrite=true)'
                             , buffer, config1)
                             .then(function (resp) {
                                 //  console.log(resp.data);
+                                fetch(modPath1)
+                                    .then(res => res.buffer())
+                                    .then(buffer => {
+                                        let reportFileName1 = "CCGJobMaterialPickList80.pdf"
+                                        axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
+                                            '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName1 + '\',overwrite=true)'
+                                            , buffer, config1)
+                                            .then(function (resp) {
+                                                //  console.log(resp.data);
+                                            })
+                                            .catch(function (error) {
+                                                console.log(error.response.data);
+                                            });
+                                    })
                             })
                             .catch(function (error) {
                                 console.log(error.response.data);
@@ -139,11 +156,11 @@ async function createFolder(authToken, itemLotJob, item, outputPath){
     console.log(authToken)
     console.log(item)
 
-    axios.post('https://immy2700.sharepoint.com/sites/production-automation/_api/web/folders',{
+    axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/folders',{
             "__metadata": {
                 "type": "SP.Folder"
             },
-            "ServerRelativeUrl": "https://immy2700.sharepoint.com/sites/production-automation/Shared Documents/Production Data/"+item+"/"+itemLotJob
+            "ServerRelativeUrl": "https://immy2700.sharepoint.com/sites/Production/Shared Documents/Production Data/ERP Folder/"+item+"/"+itemLotJob
         },config)
             .then(function (response) {
               //  console.log(response.data);
@@ -154,16 +171,35 @@ async function createFolder(authToken, itemLotJob, item, outputPath){
             });
 }
 async function getFile1(itemLotJob, authToken, item, outputPath) {
-
     console.log("Report: "+outputPath)
     sql.connect(conn).then(pool => {
         return pool.request()
-            .query(`select DOCID from IMMYETQDocuments where item = '` + item + `'`)
+            .query(`select DocumentNumber from IMMYETQDocuments where item = '` + item + `'`)
     }).then(result => {
-        console.log(result.recordset[0].DOCID)
+        console.log(result.recordset)
         if (result.recordset) {
             for (let i = 0; i < result.recordset.length; i++) {
-                getFile2(itemLotJob, authToken, result.recordset[i].DOCID, item, outputPath)
+                let docNum = result.recordset[i].DocumentNumber
+                console.log("183 "+docNum)
+                let config = {
+                    method: 'get',
+                    url: 'https://immy.etq.com/prod/rest/v1/dao/DOCWORK/DOCWORK_DOCUMENT/where?&keys=ETQ$NUMBER&values='+docNum+'&pagesize=1000&columns=DOCWORK_ID',
+                    headers: {
+                        'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+                    }
+                };
+                axios(config)
+                    .then(function (response) {
+                        let docIDs = CircularJSON.stringify(response.data.Records);
+                        console.log("197: "+docIDs)
+                        for (let j = 0; j < docIDs.length; j++){
+                            //@ts-ignore
+                            let x = CircularJSON.stringify(response.data.Records[j].Columns[0].value)
+                            getFile2(itemLotJob, authToken, x , item, outputPath)
+                        }
+                    }).catch(function (error) {
+                    console.log(error);
+                });
             }
         }
     }).catch(function (error) {
@@ -172,9 +208,14 @@ async function getFile1(itemLotJob, authToken, item, outputPath) {
 }
 
 async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
+    console.log("Entering file 2")
+    let docNum = docID.replace(/"/g,'');
+    console.log('https://immy.etq.com/prod/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docNum)
+
+
     let config = {
         method: 'get',
-        url: 'https://immy.etq.com/prod/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docID,
+        url: 'https://immy.etq.com/prod/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docNum,
         headers: {
             'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
         }
@@ -185,81 +226,47 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
             let x = response.data.Document[0].Fields[16].attachmentPath;
             console.log(response.data.Document[0].Fields[16].Values[0]);
             let path = x.replace(/\\/g,"/");
-            let fileName = response.data.Document[0].Fields[16].Values[0]
-            console.log(fileName)
-            let url = "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+""
-            console.log(url);
-            let config1 = {
-                method: 'get',
-                url: "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+"",
-                headers: {
-                    'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
-                },
-                responseType: 'arraybuffer'
-            };
-            axios(config1)
-                .then(function (response1) {
-                    let config = {
-                        headers: {
-                            'Accept': 'application/json;odata=nometadata',
-                            'Authorization': 'Bearer '+authToken,
-                            'X-RequestDigest': '0x703AE026F5E314B4F898AE91F77BDA1D192553AD50585C5018FCE8BD69BA6DC71EA26D88A4E650235663C76804D9048B2E7D1FB786702F2B4D97FCCC33B90ED9'
-                        }
-                    };
-                    console.log(response1.data)
-                    axios.post('https://immy2700.sharepoint.com/sites/production-automation/_api/web/GetFolderByServerRelativeURL' +
-                        '(\'/sites/production-automation/Shared Documents/Production Data/'+item+'/'+itemLotJob+'/\')/Files/add(url=\''+itemLotJob+ ' '+fileName+'\',overwrite=true)'
-                        ,response1.data,config)
-                        .then(function (resp) {
-                              console.log("Created ETQ files successfully!");
-                             // reportUpload(outputPath, item, itemLotJob, config);
-                        })
-                        .catch(function (error) {
-                            console.log(error.response.data);
-                        });
-                })
-
+            let fileNames = response.data.Document[0].Fields[16].Values
+            for(let i = 0; i < fileNames.length; i++){
+                let fileName = response.data.Document[0].Fields[16].Values[i]
+                console.log(fileName)
+                let url = "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+""
+                console.log(url);
+                let config1 = {
+                    method: 'get',
+                    url: "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+"",
+                    headers: {
+                        'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+                    },
+                    responseType: 'arraybuffer'
+                };
+                axios(config1)
+                    .then(function (response1) {
+                        let config = {
+                            headers: {
+                                'Accept': 'application/json;odata=nometadata',
+                                'Authorization': 'Bearer '+authToken,
+                                'X-RequestDigest': '0x703AE026F5E314B4F898AE91F77BDA1D192553AD50585C5018FCE8BD69BA6DC71EA26D88A4E650235663C76804D9048B2E7D1FB786702F2B4D97FCCC33B90ED9'
+                            }
+                        };
+                        console.log(response1.data)
+                        axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
+                            '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/'+item+'/'+itemLotJob+'/\')/Files/add(url=\''+itemLotJob+ ' '+fileName+'\',overwrite=true)'
+                            ,response1.data,config)
+                            .then(function (resp) {
+                                console.log("Created ETQ files successfully!");
+                                // reportUpload(outputPath, item, itemLotJob, config);
+                            })
+                            .catch(function (error) {
+                                console.log(error.response.data);
+                            });
+                    })
+            }
         })
         .catch(function (error) {
             console.log(error);
         });
 }
-
-/*async function reportUpload(outputPath, item, itemLotJob, config) {
-    let modPath = outputPath.replace("https://inforapp.immy.com","http://164.90.42.150:1435")
-    console.log(modPath)
-    fetch(modPath)
-        .then(res => res.buffer())
-        .then(buffer => {
-            let reportFileName = "JobOperationListingReport.pdf"
-            axios.post('https://immy2700.sharepoint.com/sites/production-automation/_api/web/GetFolderByServerRelativeURL' +
-                '(\'/sites/production-automation/Shared Documents/Production Data/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName + '\',overwrite=true)'
-                , buffer, config)
-                .then(function (resp) {
-                    //  console.log(resp.data);
-                })
-                .catch(function (error) {
-                    console.log(error.response.data);
-                });
-        })
-}*/
-
-
-/*function testingOn(){
-    axios.get('https://curlmyip.org')
-        .then((response) => {
-            console.log(response.data);
-
-        });
-    fetch('http://164.90.42.150:1435/SLReports/Report/OutputFiles/sreenath-umagandhi@immy.com/CCGJobOperationListing_DIMMY_264946.pdf')
-        .then(res => res.buffer())
-        .then(buffer => {
-            console.log("success")
-            console.log(buffer)
-        }).catch(function (err){
-            console.log(err);
-    })
-}*/
 
 app.listen(80, "0.0.0.0", ()=>console.log("Listening on port: " + 80));
 https.createServer({} , app).listen(443, "0.0.0.0", ()=>console.log("Booted up https"));
