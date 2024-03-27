@@ -21,7 +21,7 @@ const conn =
         password: 'Immyforce4life!',
         server: '164.90.42.150',
      //   server: 'IMMY-VM-SQL',
-        database: 'dIMMY_App',
+        database: 'IMMY_App',
         trustServerCertificate: true,
         pool: {
             max: 10,
@@ -183,18 +183,20 @@ async function getFile1(itemLotJob, authToken, item, outputPath) {
                 console.log("183 "+docNum)
                 let config = {
                     method: 'get',
-                    url: 'https://immy.etq.com/prod/rest/v1/dao/DOCWORK/DOCWORK_DOCUMENT/where?&keys=ETQ$NUMBER&values='+docNum+'&pagesize=1000&columns=DOCWORK_ID',
+                    url: 'https://immy.etq.com/prod/rest/v1/dao/DOCWORK/DOCWORK_DOCUMENT/where?&keys=ETQ$NUMBER&values='+docNum+'&pagesize=1000&columns=DOCWORK_ID&ordercolumns=ETQ$COMPLETED_DATE D',
                     headers: {
                         'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
                     }
                 };
                 axios(config)
                     .then(function (response) {
+                        console.log("193: "+response)
                         let docIDs = CircularJSON.stringify(response.data.Records);
                         console.log("197: "+docIDs)
                         for (let j = 0; j < docIDs.length; j++){
                             //@ts-ignore
                             let x = CircularJSON.stringify(response.data.Records[j].Columns[0].value)
+                            console.log("198: " +x);
                             getFile2(itemLotJob, authToken, x , item, outputPath)
                         }
                     }).catch(function (error) {
@@ -210,6 +212,7 @@ async function getFile1(itemLotJob, authToken, item, outputPath) {
 async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
     console.log("Entering file 2")
     let docNum = docID.replace(/"/g,'');
+    console.log("214: "+docNum)
     console.log('https://immy.etq.com/prod/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docNum)
 
 
@@ -223,45 +226,54 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
     axios(config)
         .then(function (response) {
             console.log(response.data.Document[0].Fields[16]);
-            let x = response.data.Document[0].Fields[16].attachmentPath;
-            console.log(response.data.Document[0].Fields[16].Values[0]);
-            let path = x.replace(/\\/g,"/");
-            let fileNames = response.data.Document[0].Fields[16].Values
-            for(let i = 0; i < fileNames.length; i++){
-                let fileName = response.data.Document[0].Fields[16].Values[i]
-                console.log(fileName)
-                let url = "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+""
-                console.log(url);
-                let config1 = {
-                    method: 'get',
-                    url: "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+"",
-                    headers: {
-                        'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
-                    },
-                    responseType: 'arraybuffer'
-                };
-                axios(config1)
-                    .then(function (response1) {
-                        let config = {
-                            headers: {
-                                'Accept': 'application/json;odata=nometadata',
-                                'Authorization': 'Bearer '+authToken,
-                                'X-RequestDigest': '0x703AE026F5E314B4F898AE91F77BDA1D192553AD50585C5018FCE8BD69BA6DC71EA26D88A4E650235663C76804D9048B2E7D1FB786702F2B4D97FCCC33B90ED9'
-                            }
-                        };
-                        console.log(response1.data)
-                        axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
-                            '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/'+item+'/'+itemLotJob+'/\')/Files/add(url=\''+itemLotJob+ ' '+fileName+'\',overwrite=true)'
-                            ,response1.data,config)
-                            .then(function (resp) {
-                                console.log("Created ETQ files successfully!");
-                                // reportUpload(outputPath, item, itemLotJob, config);
-                            })
-                            .catch(function (error) {
-                                console.log(error.response.data);
-                            });
-                    })
+            let phase = response.data.Document[0].phase
+            console.log("Phase: "+phase)
+            if(phase.includes("APPROVED")){
+                console.log("File Approved..")
+                let x = response.data.Document[0].Fields[16].attachmentPath;
+                console.log("228: " +response.data.Document[0].Fields[16].Values[0]);
+                let path = x.replace(/\\/g,"/");
+                let fileNames = response.data.Document[0].Fields[16].Values
+                for(let i = 0; i < fileNames.length; i++){
+                    let fileName = response.data.Document[0].Fields[16].Values[i]
+                    console.log(fileName)
+                    let url = "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+""
+                    console.log(url);
+                    let config1 = {
+                        method: 'get',
+                        url: "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+"",
+                        headers: {
+                            'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+                        },
+                        responseType: 'arraybuffer'
+                    };
+                    axios(config1)
+                        .then(function (response1) {
+                            let config = {
+                                headers: {
+                                    'Accept': 'application/json;odata=nometadata',
+                                    'Authorization': 'Bearer '+authToken,
+                                    'X-RequestDigest': '0x703AE026F5E314B4F898AE91F77BDA1D192553AD50585C5018FCE8BD69BA6DC71EA26D88A4E650235663C76804D9048B2E7D1FB786702F2B4D97FCCC33B90ED9'
+                                }
+                            };
+                            console.log(response1.data)
+                            axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
+                                '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/'+item+'/'+itemLotJob+'/\')/Files/add(url=\''+itemLotJob+ ' '+fileName+'\',overwrite=true)'
+                                ,response1.data,config)
+                                .then(function (resp) {
+                                    console.log("Created ETQ files successfully!");
+                                    // reportUpload(outputPath, item, itemLotJob, config);
+                                })
+                                .catch(function (error) {
+                                    console.log(error.response.data);
+                                });
+                        })
+                }
             }
+            else{
+                console.log("Document not approved...")
+            }
+
         })
         .catch(function (error) {
             console.log(error);
