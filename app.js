@@ -225,17 +225,17 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
     };
     axios(config)
         .then(function (response) {
-            console.log(response.data.Document[0].Fields[16]);
+            console.log(response.data.Document[0].Fields[21]);
             let phase = response.data.Document[0].phase
             console.log("Phase: "+phase)
             if(phase.includes("APPROVED")){
                 console.log("File Approved..")
-                let x = response.data.Document[0].Fields[16].attachmentPath;
-                console.log("228: " +response.data.Document[0].Fields[16].Values[0]);
+                let x = response.data.Document[0].Fields[21].attachmentPath;
+                console.log("228: " +response.data.Document[0].Fields[21].Values[0]);
                 let path = x.replace(/\\/g,"/");
-                let fileNames = response.data.Document[0].Fields[16].Values
+                let fileNames = response.data.Document[0].Fields[21].Values
                 for(let i = 0; i < fileNames.length; i++){
-                    let fileName = response.data.Document[0].Fields[16].Values[i]
+                    let fileName = response.data.Document[0].Fields[21].Values[i]
                     console.log(fileName)
                     let url = "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+""
                     console.log(url);
