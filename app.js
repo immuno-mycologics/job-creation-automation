@@ -61,7 +61,7 @@ app.post('/api/uploadReport', async (req, res) => {
     axios.post('https://accounts.accesscontrol.windows.net/f1f1b8d0-6c95-49c7-bea5-ad1ad4acace6/tokens/OAuth/2',{
         grant_type: 'client_credentials',
         client_id: '187a1f2d-88d7-422c-bf8d-51f94c9b4d79@f1f1b8d0-6c95-49c7-bea5-ad1ad4acace6',
-        client_secret: 'm9Q/ZEsFrKDGXe7L3ZKe2rooWhyj+2rcT/w34AQbhpY=',
+        client_secret: 'a0xZOFF+MlRVd3BkMmxGck5UZ0phQUJwbUM1UVV1M2QzVm5pMmM1Rw==',
         resource: '00000003-0000-0ff1-ce00-000000000000/immy2700.sharepoint.com@f1f1b8d0-6c95-49c7-bea5-ad1ad4acace6'
     },config)
         .then(function (response) {
@@ -127,7 +127,7 @@ async function getAuthToken(itemLotJob, item, outputPath){
     axios.post('https://accounts.accesscontrol.windows.net/f1f1b8d0-6c95-49c7-bea5-ad1ad4acace6/tokens/OAuth/2',{
         grant_type: 'client_credentials',
         client_id: '187a1f2d-88d7-422c-bf8d-51f94c9b4d79@f1f1b8d0-6c95-49c7-bea5-ad1ad4acace6',
-        client_secret: 'm9Q/ZEsFrKDGXe7L3ZKe2rooWhyj+2rcT/w34AQbhpY=',
+        client_secret: 'a0xZOFF+MlRVd3BkMmxGck5UZ0phQUJwbUM1UVV1M2QzVm5pMmM1Rw==',
         resource: '00000003-0000-0ff1-ce00-000000000000/immy2700.sharepoint.com@f1f1b8d0-6c95-49c7-bea5-ad1ad4acace6'
     },config)
         .then(function (response) {
