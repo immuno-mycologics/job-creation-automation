@@ -15,6 +15,8 @@ let fetch = require('node-fetch');
 const buffer = require("buffer");
 var CircularJSON = require('circular-json');
 
+let accessToken;
+
 const conn =
     {
         user: 'immydev',
@@ -35,7 +37,6 @@ const conn =
 
 
 app.post('/api/createDirectory', async (req, res) => {
-
     let Job = req.body.Job.replace(/\s/g,'')
     let itemLotJob = req.body.Item+' - '+req.body.Lot+' - '+Job;
     let outputPath = req.body.OutputPath;
@@ -171,6 +172,7 @@ async function createFolder(authToken, itemLotJob, item, outputPath){
             });
 }
 async function getFile1(itemLotJob, authToken, item, outputPath) {
+    accessToken = await getAccessToken();
     console.log("Report: "+outputPath)
     sql.connect(conn).then(pool => {
         return pool.request()
@@ -185,7 +187,8 @@ async function getFile1(itemLotJob, authToken, item, outputPath) {
                     method: 'get',
                     url: 'https://immy.etq.com/prod/rest/v1/dao/DOCWORK/DOCWORK_DOCUMENT/where?&keys=ETQ$NUMBER&values='+docNum+'&pagesize=1000&columns=DOCWORK_ID&ordercolumns=ETQ$COMPLETED_DATE D',
                     headers: {
-                        'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+                      //  'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+                        'Authorization': 'Bearer '+accessToken
                     }
                 };
                 axios(config)
@@ -209,7 +212,10 @@ async function getFile1(itemLotJob, authToken, item, outputPath) {
     });
 }
 
+
+
 async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
+    accessToken =  await getAccessToken();
     console.log("Entering file 2")
     let docNum = docID.replace(/"/g,'');
     console.log("214: "+docNum)
@@ -220,7 +226,8 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
         method: 'get',
         url: 'https://immy.etq.com/prod/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docNum,
         headers: {
-            'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+           // 'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+            'Authorization': 'Bearer '+accessToken
         }
     };
     axios(config)
@@ -243,7 +250,8 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
                         method: 'get',
                         url: "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+"",
                         headers: {
-                            'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+                           // 'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
+                            'Authorization': 'Bearer '+accessToken
                         },
                         responseType: 'arraybuffer'
                     };
@@ -280,6 +288,31 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
         });
 }
 
+const getAccessToken = async () => {
+    const tokenUrl = 'https://184398208341-use1-cog-reliance.auth.us-east-1.amazoncognito.com/oauth2/token'; // Replace with your Token URL
+    const clientId = '5ntt3b4tont8a2d89hukvccg74'; // Replace with your Client ID
+    const clientSecret = '29gagrv2peeev2372ttborr5kg53929a2mafl47s22ofmib0g0l'; // Replace with your Client Secret
+
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+
+    try {
+        const response = await axios.post(tokenUrl, params, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+        });
+        console.log('Access Token:', response.data.access_token);
+        return response.data.access_token;
+    } catch (error) {
+        console.error('Error fetching access token:', error.response?.data || error.message);
+    }
+};
+
+
+//getAccessToken();
 app.listen(80, "0.0.0.0", ()=>console.log("Listening on port: " + 80));
 https.createServer({} , app).listen(443, "0.0.0.0", ()=>console.log("Booted up https"));
 module.exports = app;
