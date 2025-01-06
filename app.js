@@ -173,38 +173,42 @@ async function createFolder(authToken, itemLotJob, item, outputPath){
 }
 async function getFile1(itemLotJob, authToken, item, outputPath) {
     accessToken = await getAccessToken();
+    const headers = {
+        'Authorization': 'Bearer '+accessToken
+    }
     console.log("Report: "+outputPath)
     sql.connect(conn).then(pool => {
         return pool.request()
-            .query(`select DocumentNumber from IMMYETQDocuments where item = '` + item + `'`)
-    }).then(result => {
-        console.log(result.recordset)
+        .query(`select DocumentNumber from IMMYETQDocuments where item = '` + item + `'`)
+    }).then(async (result) => {
         if (result.recordset) {
-            for (let i = 0; i < result.recordset.length; i++) {
-                let docNum = result.recordset[i].DocumentNumber
-                console.log("183 "+docNum)
-                let config = {
-                    method: 'get',
-                    url: 'https://immy.etq.com/prod/rest/v1/dao/DOCWORK/DOCWORK_DOCUMENT/where?&keys=ETQ$NUMBER&values='+docNum+'&pagesize=1000&columns=DOCWORK_ID&ordercolumns=ETQ$COMPLETED_DATE D',
-                    headers: {
-                      //  'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
-                        'Authorization': 'Bearer '+accessToken
+            let docIDs = []
+            const docNumbers = result.recordset.map(record => record.DocumentNumber)
+            console.log(docNumbers)
+            try{
+                let response = await axios.get(
+                    'https://immy.api.etq.com/reliance/rest/v1/datasources/DOCWORK_CLOSED_MASTERLIST/execute?pagesize=2000',   
+                    {
+                      headers
                     }
-                };
-                axios(config)
-                    .then(function (response) {
-                        console.log("193: "+response)
-                        let docIDs = CircularJSON.stringify(response.data.Records);
-                        console.log("197: "+docIDs)
-                        for (let j = 0; j < docIDs.length; j++){
-                            //@ts-ignore
-                            let x = CircularJSON.stringify(response.data.Records[j].Columns[0].value)
-                            console.log("198: " +x);
-                            getFile2(itemLotJob, authToken, x , item, outputPath)
-                        }
-                    }).catch(function (error) {
-                    console.log(error);
-                });
+                );
+            response.data.Records.some(record => {
+                if(docNumbers.length == docIDs.length){
+                    return true
+                }
+                const docNumber = record.Columns.find(column => column.name === 'DOCUMENT_NUMBER')?.value
+                if(docNumbers.includes(docNumber)){
+                    docIDs.push(record.Columns[0].value)
+                }
+                return false
+            })
+            console.log(docIDs)
+            docIDs.map(docID => {
+               getFile2(itemLotJob, authToken, docID, item, outputPath)
+                })
+            }
+            catch(error){
+                console.log(error)
             }
         }
     }).catch(function (error) {
@@ -219,12 +223,10 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
     console.log("Entering file 2")
     let docNum = docID.replace(/"/g,'');
     console.log("214: "+docNum)
-    console.log('https://immy.etq.com/prod/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docNum)
-
 
     let config = {
         method: 'get',
-        url: 'https://immy.etq.com/prod/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docNum,
+        url: 'https://immy.api.etq.com/reliance/rest/v1/documents/DOCWORK/DOCWORK_DOCUMENT/'+docNum,
         headers: {
            // 'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
             'Authorization': 'Bearer '+accessToken
@@ -232,6 +234,7 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
     };
     axios(config)
         .then(function (response) {
+            console.log(response.data.Document[0])
             console.log(response.data.Document[0].Fields[21]);
             let phase = response.data.Document[0].phase
             console.log("Phase: "+phase)
@@ -243,12 +246,9 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
                 let fileNames = response.data.Document[0].Fields[21].Values
                 for(let i = 0; i < fileNames.length; i++){
                     let fileName = response.data.Document[0].Fields[21].Values[i]
-                    console.log(fileName)
-                    let url = "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+""
-                    console.log(url);
                     let config1 = {
                         method: 'get',
-                        url: "https://immy.etq.com/prod/rest/v1/attachments?path="+path+"&name="+fileName+"",
+                        url: "https://immy.api.etq.com/reliance/rest/v1/attachments?path="+path+"&name="+fileName+"",
                         headers: {
                            // 'Authorization': 'Basic V1NfUHJvZF9JTU1ZOkcydmIzancx'
                             'Authorization': 'Bearer '+accessToken
@@ -289,9 +289,9 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
 }
 
 const getAccessToken = async () => {
-    const tokenUrl = 'https://184398208341-use1-cog-reliance.auth.us-east-1.amazoncognito.com/oauth2/token'; // Replace with your Token URL
-    const clientId = '5ntt3b4tont8a2d89hukvccg74'; // Replace with your Client ID
-    const clientSecret = '29gagrv2peeev2372ttborr5kg53929a2mafl47s22ofmib0g0l'; // Replace with your Client Secret
+        const tokenUrl = 'https://reliance-auth-prod-3003.auth.us-east-1.amazoncognito.com/oauth2/token'; 
+    const clientId = '6cosjmq0kpprnhpld2qpdgkvm8'; // Replace with your Client ID
+    const clientSecret = '10up4od44b75rlq03gfbgvlk7k4h5c1blirag4rubpc62n94c92i'; // Replace with your Client Secret
 
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
