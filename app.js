@@ -85,8 +85,8 @@ app.post('/api/uploadReport', async (req, res) => {
                     .then(res => res.buffer())
                     .then(buffer => {
                         let reportFileName = "JobOperationListingReport.pdf"
-                        axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
-                            '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName + '\',overwrite=true)'
+                        axios.post('https://immy2700.sharepoint.com/sites/ProductionData/_api/web/GetFolderByServerRelativeURL' +
+                            '(\'/sites/ProductionData/Shared Documents/Production Data/ERP Folder/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName + '\',overwrite=true)'
                             , buffer, config1)
                             .then(function (resp) {
                                 //  console.log(resp.data);
@@ -94,8 +94,8 @@ app.post('/api/uploadReport', async (req, res) => {
                                     .then(res => res.buffer())
                                     .then(buffer => {
                                         let reportFileName1 = "CCGJobMaterialPickList80.pdf"
-                                        axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
-                                            '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName1 + '\',overwrite=true)'
+                                        axios.post('https://immy2700.sharepoint.com/sites/ProductionData/_api/web/GetFolderByServerRelativeURL' +
+                                            '(\'/sites/ProductionData/Shared Documents/Production Data/ERP Folder/' + item + '/' + itemLotJob + '/\')/Files/add(url=\'' + reportFileName1 + '\',overwrite=true)'
                                             , buffer, config1)
                                             .then(function (resp) {
                                                 //  console.log(resp.data);
@@ -157,11 +157,11 @@ async function createFolder(authToken, itemLotJob, item, outputPath){
     console.log(authToken)
     console.log(item)
 
-    axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/folders',{
+    axios.post('https://immy2700.sharepoint.com/sites/ProductionData/_api/web/folders',{
             "__metadata": {
                 "type": "SP.Folder"
             },
-            "ServerRelativeUrl": "https://immy2700.sharepoint.com/sites/Production/Shared Documents/Production Data/ERP Folder/"+item+"/"+itemLotJob
+            "ServerRelativeUrl": "https://immy2700.sharepoint.com/sites/ProductionData/Shared Documents/Production Data/ERP Folder/"+item+"/"+itemLotJob
         },config)
             .then(function (response) {
               //  console.log(response.data);
@@ -265,8 +265,8 @@ async function getFile2(itemLotJob, authToken, docID, item, outputPath) {
                                 }
                             };
                             console.log(response1.data)
-                            axios.post('https://immy2700.sharepoint.com/sites/Production/_api/web/GetFolderByServerRelativeURL' +
-                                '(\'/sites/Production/Shared Documents/Production Data/ERP Folder/'+item+'/'+itemLotJob+'/\')/Files/add(url=\''+itemLotJob+ ' '+fileName+'\',overwrite=true)'
+                            axios.post('https://immy2700.sharepoint.com/sites/ProductionData/_api/web/GetFolderByServerRelativeURL' +
+                                '(\'/sites/ProductionData/Shared Documents/Production Data/ERP Folder/'+item+'/'+itemLotJob+'/\')/Files/add(url=\''+itemLotJob+ ' '+fileName+'\',overwrite=true)'
                                 ,response1.data,config)
                                 .then(function (resp) {
                                     console.log("Created ETQ files successfully!");
